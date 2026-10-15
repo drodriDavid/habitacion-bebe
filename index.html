@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Habitación del bebé</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧸</text></svg>">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
+  "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
+  "three-mesh-bvh": "https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.7.8/build/index.module.js",
+  "three-gpu-pathtracer": "https://cdn.jsdelivr.net/npm/three-gpu-pathtracer@0.0.23/build/index.module.js"
+} }
+</script>
+<style>
+  :root { --bg: #f6f1ea; --card: #fffdf9; --ink: #3b3530; --muted: #8a8077; --line: #e6ddd2; --accent: #6f9a8d; }
+  html, body { height: 100%; margin: 0; }
+  body.puerta { background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: grid; place-items: center; padding: 16px; box-sizing: border-box; }
+  .tarjeta { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 28px 24px; width: min(360px, 100%);
+    box-shadow: 0 10px 30px rgba(80,60,40,.08); text-align: center; box-sizing: border-box; }
+  .tarjeta h1 { font-size: 20px; margin: 6px 0 4px; }
+  .tarjeta p { color: var(--muted); margin: 0 0 18px; font-size: 13.5px; }
+  .oso { font-size: 46px; }
+  .tarjeta input[type=password] { width: 100%; box-sizing: border-box; font: inherit; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+  .tarjeta label { display: flex; gap: 8px; align-items: center; justify-content: center; font-size: 13px; color: var(--muted); margin: 12px 0 16px; }
+  .tarjeta button { width: 100%; font: inherit; font-weight: 600; padding: 11px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; cursor: pointer; }
+  .tarjeta button:disabled { opacity: .6; }
+  .error { color: #c4554d; font-size: 13px; min-height: 1.2em; margin: 10px 0 0; }
+</style>
+</head>
+<body class="puerta">
+<form class="tarjeta" id="puerta">
+  <div class="oso">🧸</div>
+  <h1>Habitación del bebé</h1>
+  <p>Escribe la contraseña para entrar</p>
+  <input type="password" id="clave" autocomplete="current-password" placeholder="Contraseña" autofocus>
+  <label><input type="checkbox" id="recordar" checked> Recordar en este dispositivo</label>
+  <button id="entrar">Entrar</button>
+  <div class="error" id="error"></div>
+</form>
+<script>
+// El contenido de la web va cifrado (AES-256-GCM, clave derivada con PBKDF2) en contenido.txt.
+const VERSION = '20261015122940', CLAVE = 'hb-clave';
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function abrir(pass, recordar) {
+  const env = await fetch('contenido.txt?v=' + VERSION, { cache: 'no-cache' }).then(r => r.json());
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: b64(env.s), iterations: env.n, hash: 'SHA-256' },
+    base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  const data = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(env.iv) }, key, b64(env.c))));
+  try { (recordar ? localStorage : sessionStorage).setItem(CLAVE, pass); } catch (e) { /* sin almacenamiento */ }
+  document.head.insertAdjacentHTML('beforeend', '<style>' + data.css + '</style>');
+  document.body.className = '';
+  document.body.innerHTML = data.html;
+  await import(URL.createObjectURL(new Blob([data.js], { type: 'text/javascript' })));
+}
+const form = document.getElementById('puerta'), err = document.getElementById('error'), btn = document.getElementById('entrar');
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  btn.disabled = true; err.textContent = '';
+  try { await abrir(document.getElementById('clave').value, document.getElementById('recordar').checked); }
+  catch (e2) { console.error(e2); err.textContent = 'Contraseña incorrecta'; btn.disabled = false; }
+});
+let guardada = null;
+try { guardada = localStorage.getItem(CLAVE) || sessionStorage.getItem(CLAVE); } catch (e) { /* */ }
+if (guardada) abrir(guardada, !!localStorage.getItem(CLAVE)).catch(() => { try { localStorage.removeItem(CLAVE); sessionStorage.removeItem(CLAVE); } catch (e) { /* */ } });
+</script>
+</body>
+</html>
