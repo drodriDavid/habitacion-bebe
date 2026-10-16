@@ -44,7 +44,7 @@
 </form>
 <script>
 // El contenido de la web va cifrado (AES-256-GCM, clave derivada con PBKDF2) en contenido.txt.
-const VERSION = '20261016072159', CLAVE = 'hb-clave';
+const VERSION = '20261016072628', CLAVE = 'hb-clave';
 const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 async function abrir(pass, recordar) {
   const env = await fetch('contenido.txt?v=' + VERSION, { cache: 'no-cache' }).then(r => r.json());
